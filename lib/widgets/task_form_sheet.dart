@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../app_state.dart';
 import '../models.dart';
+import '../utils.dart';
 
 Future<void> showTaskForm(
   BuildContext context, {
@@ -182,6 +183,26 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
         );
 
         await state.addTask(task);
+
+        if (_reminder && task.dueDateTime != null) {
+          final due = task.dueDateTime!;
+          final fireAt = due.subtract(
+            Duration(minutes: task.reminderLead),
+          );
+
+          if (!fireAt.isAfter(DateTime.now()) &&
+              due.isAfter(DateTime.now()) &&
+              mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Due time is sooner than your ${task.reminderLead}-min '
+                  'reminder lead — you\'ll be notified right when it\'s due.',
+                ),
+              ),
+            );
+          }
+        }
       }
 
       if (!mounted) return;
