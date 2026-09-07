@@ -189,6 +189,13 @@ class NotificationService {
   int _idForClass(String classId) =>
       ('class:$classId').hashCode & 0x7fffffff;
 
+  /// Everything currently registered with the OS — the ground truth for
+  /// "did scheduling actually work". Exposed publicly so the Settings
+  /// screen can show it directly on-device, no adb/console needed.
+  Future<List<PendingNotificationRequest>> pendingRequests() {
+    return _plugin.pendingNotificationRequests();
+  }
+
   static const _testId = 2147483000;
 
   NotificationDetails _details({bool asAlarm = false}) {
