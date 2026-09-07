@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 
 import '../api_service.dart';
@@ -139,6 +140,90 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
       }
     }
+  }
+
+  Future<void> _showPendingReminders() async {
+    List<PendingNotificationRequest> pending = [];
+    Object? error;
+
+    try {
+      pending = await _notifications.pendingRequests();
+    } catch (e) {
+      error = e;
+    }
+
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Scheduled reminders'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: error != null
+              ? Text('Could not read scheduled reminders: $error')
+              : pending.isEmpty
+                  ? const Text(
+                      'Nothing is currently scheduled with the OS.\n\n'
+                      'If you just created a task or class with a '
+                      'reminder and this is empty, scheduling itself is '
+                      'failing before it ever reaches the OS — that\'s a '
+                      'code-side bug, not a permission/battery issue.',
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${pending.length} reminder'
+                          '${pending.length == 1 ? '' : 's'} registered '
+                          'with the OS right now:',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Flexible(
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: pending.length,
+                            itemBuilder: (context, i) {
+                              final p = pending[i];
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
+                                child: Text(
+                                  'ID ${p.id} — ${p.title ?? '(no title)'}\n'
+                                  '${p.body ?? ''}',
+                                  style: const TextStyle(fontSize: 12.5),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'If a reminder shows up here but never actually '
+                          'fires, the OS accepted the alarm but isn\'t '
+                          'delivering it — that\'s usually an OEM battery/'
+                          'auto-start restriction, not a bug in the app.',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _askForExactAlarms() async {
@@ -350,6 +435,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text(
                   _sendingTestNotification ? 'Sending' : 'Send',
                 ),
+              ),
+            ),
+
+            const Divider(height: 1),
+
+            _row(
+              'Scheduled reminders',
+              subtitle:
+                  'See exactly what\'s registered with the OS right now — '
+                  'create a task/class reminder first, then check here',
+              trailing: FilledButton.tonal(
+                onPressed: _showPendingReminders,
+                child: const Text('Check'),
               ),
             ),
 
