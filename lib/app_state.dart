@@ -372,13 +372,39 @@ classCompletions = rawCompletions
       'isAfterNow=${fireAt.isAfter(now)}',
     );
 
+    // If the lead time is longer than the time actually left before the
+    // deadline (e.g. a task due in 5 min with a 10-min lead), fireAt ends
+    // up in the past and we'd otherwise silently schedule nothing at
+    // all. Rather than lose the reminder entirely, fall back to firing
+    // right at the due time — as long as the due time itself is still
+    // in the future.
+    var effectiveFireAt = fireAt;
+
+    if (!effectiveFireAt.isAfter(now)) {
+      if (due.isAfter(now)) {
+        debugPrint(
+          '🔎 Study Buddy: task "${task.title}" — reminderLead '
+          '(${task.reminderLead}min) overshoots the time left before '
+          'due=$due; falling back to firing AT the due time instead '
+          'of skipping the reminder entirely.',
+        );
+        effectiveFireAt = due;
+      } else {
+        debugPrint(
+          '🔎 Study Buddy: task "${task.title}" — NOT SCHEDULING, '
+          'due time itself ($due) has already passed.',
+        );
+        return;
+      }
+    }
+
     await _notifications.scheduleTaskReminder(
       taskId: task.id,
       title: task.title,
       body: task.reminderLead > 0
           ? 'Due in ${task.reminderLead} min'
           : 'Due now',
-      fireAt: fireAt,
+      fireAt: effectiveFireAt,
     );
   }
 
